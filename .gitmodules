@@ -1,0 +1,15 @@
+[submodule "app/tinyusb"]
+	path = app/tinyusb
+	url = https://github.com/hathach/tinyusb.git
+[submodule "app/lwip"]
+	path = app/lwip
+	url = https://github.com/lwip-tcpip/lwip.git
+[submodule "app/CC"]
+	path = app/CC
+	url = https://github.com/JacksonAllan/CC.git
+[submodule "app/mf"]
+	path = app/mf
+	url = https://github.com/JohnGu9/mf.git
+[submodule "app/tiny-http-parser"]
+	path = app/tiny-http-parser
+	url = https://github.com/JohnGu9/tiny-http-parser.git

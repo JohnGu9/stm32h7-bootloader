@@ -1,0 +1,27 @@
+{
+  "name": "bootloader-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build && npm run convert",
+    "preview": "vite preview",
+    "convert": "node script/convert.js index.c dist/index.html.gz index_html_gz dist/favicon.svg.gz favicon_svg_gz"
+  },
+  "dependencies": {
+    "material-design-transform": "^3.0.0",
+    "preact": "^11.0.2",
+    "react": "npm:@preact/compat",
+    "react-dom": "npm:@preact/compat"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^24.19.2",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.5",
+    "vite-plugin-compression2": "^2.5.4",
+    "vite-plugin-html-minifier": "^1.0.5",
+    "vite-plugin-singlefile": "^2.3.4"
+  }
+}
