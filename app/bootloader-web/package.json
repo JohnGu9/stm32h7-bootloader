@@ -10,7 +10,7 @@
     "convert": "node script/convert.js index.c dist/index.html.gz index_html_gz dist/favicon.svg.gz favicon_svg_gz"
   },
   "dependencies": {
-    "material-design-transform": "^3.0.0",
+    "material-design-transform": "^4.0.0",
     "preact": "^11.0.2",
     "react": "npm:@preact/compat",
     "react-dom": "npm:@preact/compat"
