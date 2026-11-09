@@ -3,6 +3,8 @@
 #include "http-server.h"
 #include <assert.h>
 
+// @TODO: add ignore flash error feature
+
 static size_t _current_token = 0;
 static size_t _current_offset = 0;
 static int _flash_busy = 0;
@@ -56,9 +58,11 @@ static int is_flash_available(size_t token) {
   return 1;
 }
 
-static FLASH_EraseInitTypeDef EraseInitStruct = {
+// define where to erase app flash data
+// should match `APP_START_ADDR` and `APP_SIZE` in `bootloader-common-config.h`
+static FLASH_EraseInitTypeDef AppEraseInitStruct = {
     .TypeErase = FLASH_TYPEERASE_MASSERASE,
-    .VoltageRange = FLASH_VOLTAGE_RANGE_3,
+    .VoltageRange = FLASH_VOLTAGE_RANGE_3, // 2.7V to 3.6V
     .Banks = FLASH_BANK_2,
 };
 
@@ -84,7 +88,8 @@ int flash_app_clear(size_t token) {
   }
 
   uint32_t SectorError;
-  HAL_StatusTypeDef status = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
+  HAL_StatusTypeDef status =
+      HAL_FLASHEx_Erase(&AppEraseInitStruct, &SectorError);
   assert(status == HAL_OK);
   if (unlikely(status != HAL_OK)) {
     return status;
@@ -105,7 +110,7 @@ int flash_app_clear_async(size_t token, const EventTask_t *on_completed) {
   _flash_operation_on_completed = *on_completed;
 
   // invoke `HAL_FLASH_EndOfOperationCallback` when complete
-  HAL_StatusTypeDef status = HAL_FLASHEx_Erase_IT(&EraseInitStruct);
+  HAL_StatusTypeDef status = HAL_FLASHEx_Erase_IT(&AppEraseInitStruct);
   assert(status == HAL_OK);
   if (unlikely(status != HAL_OK)) {
     _flash_busy = 0;
@@ -233,17 +238,18 @@ void HAL_FLASH_EndOfOperationCallback(uint32_t ReturnValue) {
   // Example: Trigger the next page erase or start programming data
   switch (pFlash.ProcedureOnGoing) {
   case FLASH_PROC_NONE:
-    // after erase
+    // after erase all section
     schedule_task_on_main_thread(&_on_completed_task);
     break;
   case FLASH_PROC_SECTERASE_BANK1:
   case FLASH_PROC_SECTERASE_BANK2:
+    // after erase each section
     // not using
     break;
   case FLASH_PROC_MASSERASE_BANK1:
   case FLASH_PROC_MASSERASE_BANK2:
   case FLASH_PROC_ALLBANK_MASSERASE:
-    // after erase
+    // after erase full bank
     schedule_task_on_main_thread(&_on_completed_task);
     break;
   case FLASH_PROC_PROGRAM_BANK1:

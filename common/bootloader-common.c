@@ -6,11 +6,11 @@ typedef void (*pFunction)(void);
 
 void jump_to(uintptr_t base_address) {
   /* Read application stack pointer */
-  uintptr_t appStack = *(volatile uintptr_t *)base_address;
+  const uintptr_t app_stack = *(volatile uintptr_t *)base_address;
 
   /* Read reset handler address */
-  uintptr_t appResetHandler = *((volatile uintptr_t *)base_address + 1);
-  pFunction appEntry = (pFunction)appResetHandler;
+  const uintptr_t app_reset_handler = *((volatile uintptr_t *)base_address + 1);
+  const pFunction app_entry = (pFunction)app_reset_handler;
 
   /* Disable interrupts */
   __disable_irq();
@@ -21,13 +21,13 @@ void jump_to(uintptr_t base_address) {
   SysTick->VAL = 0;
 
   /* Set main stack pointer */
-  __set_MSP(appStack);
+  __set_MSP(app_stack);
 
   /* Jump to application reset handler */
-  appEntry();
+  app_entry();
 }
 
 void after_jump_to(uintptr_t base_address) {
-  SCB->VTOR = base_address; // Add This
-  __enable_irq();           // Add This
+  SCB->VTOR = base_address;
+  __enable_irq();
 }
