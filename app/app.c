@@ -34,6 +34,33 @@ static int is_k1_pressed() {
   return 0;
 }
 
+extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+static void MX_USB_OTG_FS_PCD_Deinit(void) {
+  if (HAL_PCD_DeInit(&hpcd_USB_OTG_FS) != HAL_OK) {
+    Error_Handler();
+  }
+}
+
+/**
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_GPIO_Deinit(void) {
+  /* EXTI interrupt deinit*/
+  HAL_NVIC_DisableIRQ(K1_EXTI_IRQn);
+
+  /*Configure GPIO pin : K1_Pin */
+  HAL_GPIO_DeInit(K1_GPIO_Port, K1_Pin);
+
+  /*Configure GPIO pin : LED_Pin */
+  HAL_GPIO_DeInit(LED_GPIO_Port, LED_Pin);
+
+  __HAL_RCC_GPIOE_CLK_DISABLE();
+  __HAL_RCC_GPIOH_CLK_DISABLE();
+  __HAL_RCC_GPIOA_CLK_DISABLE();
+}
+
 void StartDefaultTask(void *argument) {
   // turn on led
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
@@ -45,6 +72,9 @@ void StartDefaultTask(void *argument) {
     // enter bootloader
     bootloader_main();
   }
+
+  MX_USB_OTG_FS_PCD_Deinit();
+  MX_GPIO_Deinit();
 
   jump_to_application();
   return;
