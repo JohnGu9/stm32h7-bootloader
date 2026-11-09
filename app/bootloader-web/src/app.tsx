@@ -41,9 +41,9 @@ export function App() {
 
     let closed = false;
 
-    function onclose(e: unknown) {
+    function onclose() {
       if (closed) return;
-      console.log(e);
+      setWs(null);
       retryTimer = setTimeout(() => {
         setWsId(v => v + 1);
       }, 1000);
@@ -52,7 +52,7 @@ export function App() {
     switch (ws.readyState) {
       case ws.CLOSING:
       case ws.CLOSED:
-        onclose(null);
+        onclose();
         break;
       default:
         ws.onclose = onclose;

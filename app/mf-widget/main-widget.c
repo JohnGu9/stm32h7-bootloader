@@ -37,7 +37,7 @@ static void build(mContext_t *context, mWidget_t children[MF_MAX_CHILDREN]) {
 static void dispose(mContext_t *context) {
   m_get_state_cast(state, context, MainWidgetState_t);
   remove_task(&link_state_listeners, &state->on_on_link_state_task);
-  our_free(state);
+  our_delete(state);
   return;
 };
 

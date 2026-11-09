@@ -2,14 +2,10 @@
 
 #include "FreeRTOS.h"
 
-void null_on_dispose(void *context, const char *buffer, size_t buffer_size) {
-  UNUSED(context);
-  UNUSED(buffer);
-  UNUSED(buffer_size);
-}
-
 void dispose_buffer(const DisposableBuffer_t *buffer) {
-  buffer->on_dispose(buffer->context, buffer->data, buffer->size);
+  if (buffer->on_dispose != NULL) {
+    buffer->on_dispose(buffer->context, buffer->data, buffer->size);
+  }
 }
 
 typedef struct {
@@ -22,7 +18,9 @@ static void dispose_shared_buffer(void *ctx, const char *data, size_t size) {
   SharedBufferContext_t *const context = (SharedBufferContext_t *)ctx;
   context->ref_count -= 1;
   if (context->ref_count == 0) {
-    context->on_dispose(context->context, data, size);
+    if (context->on_dispose != NULL) {
+      context->on_dispose(context->context, data, size);
+    }
     our_delete(context);
   }
 }

@@ -23,7 +23,7 @@ static size_t route_index(TinyHttpParserContext_t *context,
                               "Content-Length: " index_html_gz_len_str "\r\n"
                               "\r\n");
   client_context_send_static(client_context, index_html_gz);
-  return tiny_http_parser_default_on_header(context, header);
+  return tiny_http_parser_get_body_size(context, header);
 }
 
 static size_t route_favicon_svg(TinyHttpParserContext_t *context,
@@ -37,7 +37,7 @@ static size_t route_favicon_svg(TinyHttpParserContext_t *context,
                               "Content-Length: " favicon_svg_gz_len_str "\r\n"
                               "\r\n");
   client_context_send_static(client_context, favicon_svg_gz);
-  return tiny_http_parser_default_on_header(context, header);
+  return tiny_http_parser_get_body_size(context, header);
 }
 
 static size_t route_upload(TinyHttpParserContext_t *context,
@@ -50,7 +50,7 @@ static size_t route_upload(TinyHttpParserContext_t *context,
   if (is_valid_flash_token(client_context->flash_token)) {
     mf_print_literal(client_context->state->context, "uploading...");
     flash_operation_queue_init(client_context->flash_token);
-    return tiny_http_parser_default_on_header(context, header);
+    return tiny_http_parser_get_body_size(context, header);
   }
 
   client_context_send_literal(client_context,

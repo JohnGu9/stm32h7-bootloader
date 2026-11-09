@@ -83,21 +83,15 @@ void client_context_send(ClientContext_t *client_context,
 
 #define client_context_send_literal(client_context, literal)                   \
   do {                                                                         \
-    const DisposableBuffer_t __disposable_buffer = {                           \
-        .data = (literal),                                                     \
-        .size = sizeof(literal) - 1,                                           \
-        .on_dispose = null_on_dispose,                                         \
-    };                                                                         \
+    const DisposableBuffer_t __disposable_buffer =                             \
+        LiteralDisposableBuffer(literal);                                      \
     client_context_send(client_context, &__disposable_buffer);                 \
   } while (0)
 
 #define client_context_send_static(client_context, array)                      \
   do {                                                                         \
-    const DisposableBuffer_t __disposable_buffer = {                           \
-        .data = (const char *)(array),                                         \
-        .size = sizeof(array),                                                 \
-        .on_dispose = null_on_dispose,                                         \
-    };                                                                         \
+    const DisposableBuffer_t __disposable_buffer =                             \
+        StaticDisposableBuffer((const char *)(array), sizeof(array));          \
     client_context_send(client_context, &__disposable_buffer);                 \
   } while (0)
 
@@ -132,10 +126,9 @@ int flash_app_clear(size_t token);
 int flash_app_clear_async(size_t token, const EventTask_t *on_completed);
 
 #define FLASH_WORD_SIZE (FLASH_NB_32BITWORD_IN_FLASHWORD * sizeof(uint32_t))
-int flash_app_write(size_t token, const uint8_t flash_word[FLASH_WORD_SIZE]);
-int flash_app_write_async(size_t token,
-                          const uint8_t flash_word[FLASH_WORD_SIZE],
-                          const EventTask_t *on_completed);
+int flash_write(size_t token, const uint8_t flash_word[FLASH_WORD_SIZE]);
+int flash_write_async(size_t token, const uint8_t flash_word[FLASH_WORD_SIZE],
+                      const EventTask_t *on_completed);
 
 int release_flash_token(size_t token);
 

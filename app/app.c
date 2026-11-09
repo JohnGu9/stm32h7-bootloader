@@ -90,7 +90,6 @@ static void bootloader_main() {
   uint32_t flags =
       osEventFlagsWait(defaultTaskEventHandle, APP_EVENT_ALL, osFlagsWaitAny,
                        0); // clear all flags before event loop
-  assert(!(flags & osFlagsError));
 
   status = osTimerStart(lwipTimerHandle, 200);
   assert(status == osOK);

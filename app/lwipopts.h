@@ -83,8 +83,10 @@
 #define LWIP_IPV6_MLD                   0
 #define LWIP_IPV6_SEND_ROUTER_SOLICIT   0
 
+#define SO_REUSE                        1
 #define MEMP_OVERFLOW_CHECK             2
 #define MEM_SIZE                        0x4000
-#define SO_REUSE                        1
 #define MEMP_NUM_PBUF                   64
+#define MEMP_NUM_TCP_PCB                16
+#define MEMP_NUM_TCP_PCB_LISTEN         4
 #endif /* __LWIPOPTS_H__ */

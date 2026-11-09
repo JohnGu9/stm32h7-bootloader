@@ -5,7 +5,6 @@
 #include "bootloader-common.h"
 #include "cmsis_os2.h"
 
-
 #define our_new(T) (T *)pvPortMalloc(sizeof(T))
 #define our_delete(p) vPortFree(p)
 
@@ -39,17 +38,14 @@ typedef struct {
   void (*on_dispose)(void *context, const char *buffer, size_t buffer_size);
 } DisposableBuffer_t;
 
-void null_on_dispose(void *context, const char *buffer, size_t buffer_size);
-
 #define StaticDisposableBuffer(this_data, data_size)                           \
   (DisposableBuffer_t) {                                                       \
-    .data = (this_data), .size = (data_size), .on_dispose = null_on_dispose,   \
+    .data = (this_data), .size = (data_size), .on_dispose = NULL,              \
   }
 
 #define LiteralDisposableBuffer(literal)                                       \
   (DisposableBuffer_t) {                                                       \
-    .data = (literal), .size = sizeof(literal) - 1,                            \
-    .on_dispose = null_on_dispose,                                             \
+    .data = (literal), .size = sizeof(literal) - 1, .on_dispose = NULL,        \
   }
 
 void dispose_buffer(const DisposableBuffer_t *buffer);

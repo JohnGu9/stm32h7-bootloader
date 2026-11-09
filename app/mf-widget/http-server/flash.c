@@ -2,17 +2,14 @@
 #include "bootloader-common.h"
 #include "http-server.h"
 #include <assert.h>
-#include <stdint.h>
 
-static size_t current_token = 0;
-static size_t current_offset = 0;
-static int flash_busy = 0;
-
-void *get_app_address() { return (void *)APP_START_ADDR; }
+static size_t _current_token = 0;
+static size_t _current_offset = 0;
+static int _flash_busy = 0;
 
 size_t get_flash_token() {
   static size_t token = 1;
-  if (current_token != 0) { // limit only one token holder can operator flash
+  if (_current_token != 0) { // limit only one token holder can operator flash
     return 0;
   }
   HAL_StatusTypeDef status = HAL_FLASH_Unlock();
@@ -23,15 +20,15 @@ size_t get_flash_token() {
   if (unlikely(token == SIZE_MAX)) {
     token = 1;
   }
-  current_token = token++;
-  return current_token;
+  _current_token = token++;
+  return _current_token;
 }
 
 int is_valid_flash_token(size_t token) {
-  return (token != 0 && token == current_token) ? 1 : 0;
+  return (token != 0 && token == _current_token) ? 1 : 0;
 }
 
-int is_flash_busy() { return flash_busy; }
+int is_flash_busy() { return _flash_busy; }
 
 /**
  * @brief Get the flash error code when on_completed is invoked
@@ -44,20 +41,12 @@ int is_flash_has_error() {
 }
 
 static void null_callback(void *context) {}
-static EventTask_t flash_operation_on_completed = {.callback = null_callback};
-
-extern FLASH_ProcessTypeDef pFlash;
-
-static void invoke_on_completed(void *context) {
-  assert(!is_flash_has_error());
-  flash_busy = 0;
-  flash_operation_on_completed.callback(flash_operation_on_completed.context);
-}
+static EventTask_t _flash_operation_on_completed = {.callback = null_callback};
 
 static void abort_flash_token_async(void *context);
 
 static int is_abort() {
-  return flash_operation_on_completed.callback == abort_flash_token_async;
+  return _flash_operation_on_completed.callback == abort_flash_token_async;
 }
 
 static int is_flash_available(size_t token) {
@@ -68,11 +57,9 @@ static int is_flash_available(size_t token) {
 }
 
 static FLASH_EraseInitTypeDef EraseInitStruct = {
-    .TypeErase = FLASH_TYPEERASE_SECTORS,
+    .TypeErase = FLASH_TYPEERASE_MASSERASE,
     .VoltageRange = FLASH_VOLTAGE_RANGE_3,
     .Banks = FLASH_BANK_2,
-    .Sector = FLASH_SECTOR_0,
-    .NbSectors = FLASH_SECTOR_7 + 1 - FLASH_SECTOR_0,
 };
 
 static int is_ok_to_flash_app_clear(size_t token) {
@@ -88,6 +75,8 @@ static int is_ok_to_flash_app_clear(size_t token) {
   return HAL_OK;
 }
 
+static void *get_app_address() { return (void *)APP_START_ADDR; }
+
 int flash_app_clear(size_t token) {
   const int ok = is_ok_to_flash_app_clear(token);
   if (unlikely(ok != HAL_OK)) {
@@ -101,7 +90,7 @@ int flash_app_clear(size_t token) {
     return status;
   }
 
-  current_offset = (size_t)get_app_address();
+  _current_offset = (size_t)get_app_address();
   return HAL_OK;
 }
 
@@ -111,24 +100,24 @@ int flash_app_clear_async(size_t token, const EventTask_t *on_completed) {
     return ok;
   }
 
-  flash_busy = 1;
+  _flash_busy = 1;
 
-  flash_operation_on_completed = *on_completed;
+  _flash_operation_on_completed = *on_completed;
 
   // invoke `HAL_FLASH_EndOfOperationCallback` when complete
   HAL_StatusTypeDef status = HAL_FLASHEx_Erase_IT(&EraseInitStruct);
   assert(status == HAL_OK);
   if (unlikely(status != HAL_OK)) {
-    flash_busy = 0;
+    _flash_busy = 0;
     return status;
   }
 
-  current_offset = (size_t)get_app_address();
+  _current_offset = (size_t)get_app_address();
   return HAL_OK;
 }
 
-static int is_ok_to_flash_app_write(size_t token) {
-  if (unlikely(current_offset >= (APP_START_ADDR + APP_SIZE))) { // overflow
+static int is_ok_to_flash_write(size_t token) {
+  if (unlikely(_current_offset >= (APP_START_ADDR + APP_SIZE))) { // overflow
     return HAL_ERROR;
   }
   if (unlikely(!is_flash_available(token))) {
@@ -143,43 +132,42 @@ static int is_ok_to_flash_app_write(size_t token) {
   return HAL_OK;
 }
 
-int flash_app_write(size_t token, const uint8_t flash_word[FLASH_WORD_SIZE]) {
-  const int ok = is_ok_to_flash_app_write(token);
+int flash_write(size_t token, const uint8_t flash_word[FLASH_WORD_SIZE]) {
+  const int ok = is_ok_to_flash_write(token);
   if (unlikely(ok != HAL_OK)) {
     return ok;
   }
 
   HAL_StatusTypeDef status = HAL_FLASH_Program(
-      FLASH_TYPEPROGRAM_FLASHWORD, current_offset, (uint32_t)flash_word);
+      FLASH_TYPEPROGRAM_FLASHWORD, _current_offset, (uint32_t)flash_word);
   assert(status == HAL_OK);
   if (unlikely(status != HAL_OK)) {
     return status;
   }
-  current_offset += FLASH_WORD_SIZE;
+  _current_offset += FLASH_WORD_SIZE;
 
   return HAL_OK;
 }
 
-int flash_app_write_async(size_t token,
-                          const uint8_t flash_word[FLASH_WORD_SIZE],
-                          const EventTask_t *on_completed) {
-  const int ok = is_ok_to_flash_app_write(token);
+int flash_write_async(size_t token, const uint8_t flash_word[FLASH_WORD_SIZE],
+                      const EventTask_t *on_completed) {
+  const int ok = is_ok_to_flash_write(token);
   if (unlikely(ok != HAL_OK)) {
     return ok;
   }
 
-  flash_busy = 1;
+  _flash_busy = 1;
 
-  flash_operation_on_completed = *on_completed;
+  _flash_operation_on_completed = *on_completed;
   // invoke `HAL_FLASH_EndOfOperationCallback` when complete
   HAL_StatusTypeDef status = HAL_FLASH_Program_IT(
-      FLASH_TYPEPROGRAM_FLASHWORD, current_offset, (uint32_t)flash_word);
+      FLASH_TYPEPROGRAM_FLASHWORD, _current_offset, (uint32_t)flash_word);
   assert(status == HAL_OK);
   if (unlikely(status != HAL_OK)) {
-    flash_busy = 0;
+    _flash_busy = 0;
     return status;
   }
-  current_offset += FLASH_WORD_SIZE;
+  _current_offset += FLASH_WORD_SIZE;
 
   return HAL_OK;
 }
@@ -190,8 +178,8 @@ int release_flash_token(size_t token) {
   }
   HAL_StatusTypeDef status = HAL_FLASH_Lock();
   assert(status == HAL_OK);
-  current_token = 0;
-  flash_operation_on_completed.callback = null_callback;
+  _current_token = 0;
+  _flash_operation_on_completed.callback = null_callback;
   return HAL_OK;
 }
 
@@ -212,12 +200,22 @@ int abort_flash_token(size_t token) {
     return release_flash_token(token);
   }
 
-  flash_operation_on_completed.context = (void *)token;
-  flash_operation_on_completed.callback = abort_flash_token_async;
+  _flash_operation_on_completed.context = (void *)token;
+  _flash_operation_on_completed.callback = abort_flash_token_async;
   return HAL_OK;
 }
 
-static const EventTask_t on_completed_task = {.callback = invoke_on_completed};
+// irq
+
+static void invoke_on_completed(void *context) {
+  assert(!is_flash_has_error());
+  _flash_busy = 0;
+  _flash_operation_on_completed.callback(_flash_operation_on_completed.context);
+}
+
+static const EventTask_t _on_completed_task = {.callback = invoke_on_completed};
+
+extern FLASH_ProcessTypeDef pFlash;
 
 /**
  * @brief  FLASH end of operation interrupt callback.
@@ -236,7 +234,7 @@ void HAL_FLASH_EndOfOperationCallback(uint32_t ReturnValue) {
   switch (pFlash.ProcedureOnGoing) {
   case FLASH_PROC_NONE:
     // after erase
-    schedule_task_on_main_thread(&on_completed_task);
+    schedule_task_on_main_thread(&_on_completed_task);
     break;
   case FLASH_PROC_SECTERASE_BANK1:
   case FLASH_PROC_SECTERASE_BANK2:
@@ -245,12 +243,13 @@ void HAL_FLASH_EndOfOperationCallback(uint32_t ReturnValue) {
   case FLASH_PROC_MASSERASE_BANK1:
   case FLASH_PROC_MASSERASE_BANK2:
   case FLASH_PROC_ALLBANK_MASSERASE:
-    // not using
+    // after erase
+    schedule_task_on_main_thread(&_on_completed_task);
     break;
   case FLASH_PROC_PROGRAM_BANK1:
   case FLASH_PROC_PROGRAM_BANK2:
     // after write
-    schedule_task_on_main_thread(&on_completed_task);
+    schedule_task_on_main_thread(&_on_completed_task);
     break;
   }
 }

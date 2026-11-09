@@ -49,20 +49,22 @@ static err_t on_sent(void *ctx, struct tcp_pcb *pcb, u16_t len) {
 }
 
 static err_t on_accept(void *ctx, struct tcp_pcb *pcb, err_t err) {
-  assert(pcb != NULL);
   HttpServerWidgetState_t *const state = (HttpServerWidgetState_t *)ctx;
-  if (likely(err == ERR_OK)) {
-    ClientContext_t *const client_context = client_context_new();
-    client_context->state = state;
-    client_context->pcb = pcb;
-    insert(&state->active_client_pcb, (uintptr_t)pcb,
-           (uintptr_t)client_context);
-    tcp_arg(pcb, client_context);
-    tcp_recv(pcb, on_recv);
-    tcp_sent(pcb, on_sent);
-  } else {
-    tcp_abort(pcb);
+  if (likely(pcb != NULL)) {
+    if (likely(err == ERR_OK)) {
+      ClientContext_t *const client_context = client_context_new();
+      client_context->state = state;
+      client_context->pcb = pcb;
+      insert(&state->active_client_pcb, (uintptr_t)pcb,
+             (uintptr_t)client_context);
+      tcp_arg(pcb, client_context);
+      tcp_recv(pcb, on_recv);
+      tcp_sent(pcb, on_sent);
+    } else {
+      tcp_abort(pcb);
+    }
   }
+  // @TODO: pcb == NULL when out of mem
   return ERR_OK;
 }
 
@@ -146,9 +148,9 @@ static void dispose(mContext_t *context) {
   reset_mf_print(context);
 
   for_each(&state->active_client_pcb, key, el) {
-    tcp_abort((struct tcp_pcb *)(*key));
     ClientContext_t *const client_context = (ClientContext_t *)*el;
     client_context_delete(client_context);
+    tcp_abort((struct tcp_pcb *)(*key));
   }
   cleanup(&state->active_client_pcb);
 
